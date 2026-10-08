@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ShipTrack</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ShipTrack">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 100 100%27%3E%3Crect width=%27100%27 height=%27100%27 fill=%27%230b5fff%27/%3E%3Ctext x=%2750%27 y=%2772%27 font-size=%2765%27 text-anchor=%27middle%27%3E🚢%3C/text%3E%3C/svg%3E">
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#111;--mu:#667;--bd:#e2e5ea;--ac:#0b5fff}
+@media(prefers-color-scheme:dark){:root{--bg:#111418;--card:#1a1f26;--tx:#eee;--mu:#98a;--bd:#2a313b}}
+*{box-sizing:border-box}body{margin:0;font:15px system-ui,sans-serif;background:var(--bg);color:var(--tx);padding:16px;max-width:1000px;margin:auto}
+h1{font-size:20px}.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+form{display:flex;gap:8px;flex-wrap:wrap}input,select,button{padding:9px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit}
+button{background:var(--ac);color:#fff;border:0;cursor:pointer}button.g{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px;border-bottom:1px solid var(--bd)}th{color:var(--mu);font-weight:500;font-size:13px}
+.wrap{overflow-x:auto}.mu{color:var(--mu);font-size:13px}.alert{padding:8px 0;border-bottom:1px solid var(--bd);white-space:pre-line}
+.tag{padding:2px 8px;border-radius:99px;background:var(--bd);font-size:12px}
+</style></head><body>
+<h1>🚢 ShipTrack <span class="mu" id="prov"></span></h1>
+<div class="card"><form id="f">
+<input id="ref" placeholder="BL ya Container number" required>
+<input id="car" placeholder="Carrier code (MAEU, MSCU, CMDU...)" size="26">
+<select id="type"><option value="bl">Bill of Lading</option><option value="container">Container</option></select>
+<button>Add shipment</button></form></div>
+<div class="card"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><b>Shipments</b>
+<span><button class="g" onclick="act('/api/refresh')">Refresh now</button> <button class="g" onclick="act('/api/test-alert')">Test alert</button></span></div>
+<div class="wrap"><table><thead><tr><th>Number</th><th>Carrier</th><th>Status</th><th>ETA</th><th>ETA changes</th><th>Checked</th><th></th></tr></thead><tbody id="rows"></tbody></table></div></div>
+<div class="card"><b>Alerts</b><div id="alerts" class="mu"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+async function load(){const d=await (await fetch('/api/shipments')).json();$('prov').textContent='provider: '+d.provider;
+$('rows').innerHTML=d.shipments.map(s=>`<tr><td><b>${s.ref}</b>${s.error?`<div class="mu">⚠ ${s.error}</div>`:''}</td><td>${s.carrier||'-'}</td><td><span class="tag">${s.status||'Pending'}</span></td>
+<td>${s.eta?s.eta.slice(0,10):'-'}</td><td>${s.history.length}</td><td class="mu">${s.lastChecked?new Date(s.lastChecked).toLocaleString():'-'}</td>
+<td><button class="g" onclick="del('${s.id}')">✕</button></td></tr>`).join('')||'<tr><td colspan=7 class="mu">Koi shipment nahi</td></tr>';
+$('alerts').innerHTML=d.alerts.map(a=>`<div class="alert">${new Date(a.at).toLocaleString()}\n${a.text}</div>`).join('')||'Abhi koi alert nahi';}
+async function act(u){await fetch(u,{method:'POST'});load()}
+async function del(id){await fetch('/api/shipments/'+id,{method:'DELETE'});load()}
+$('f').onsubmit=async e=>{e.preventDefault();await fetch('/api/shipments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ref:$('ref').value,carrier:$('car').value,type:$('type').value})});$('ref').value='';load()};
+load();setInterval(load,15000);
+</script></body></html>
